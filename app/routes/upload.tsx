@@ -4,6 +4,7 @@ import type { Route } from "./+types/upload";
 import Navbar from "../components/Navbar";
 import FileUploader from "../components/FileUploader";
 import { usePuterStore } from "~/lib/puter";
+import { convertPdfToImage } from "~/lib/pdf2img";
 
 export function meta(_: Route.MetaArgs) {
   return [
@@ -68,10 +69,26 @@ export default function Upload() {
     try {
       // Step 1: Upload the raw PDF
       setStatus("uploading");
-      const result = await fs.upload(selectedFile);
-      console.log("Upload result:", result);
+      const pdfResult = await fs.upload(selectedFile);
+      console.log("PDF upload result:", pdfResult);
 
-      // Step 2–4: PDF-to-image conversion + AI analysis (next phase)
+      // Step 2: Convert PDF to image
+      setStatus("converting");
+      const { imageFile, error: convertError } =
+        await convertPdfToImage(selectedFile);
+
+      if (!imageFile) {
+        setErrorMessage(convertError ?? "Failed to convert PDF to image.");
+        setStatus("error");
+        return;
+      }
+
+      // Step 3: Upload the converted image
+      setStatus("uploading");
+      const imageResult = await fs.upload(imageFile);
+      console.log("Image upload result:", imageResult);
+
+      // Step 4: AI analysis (next phase — placeholder for now)
       setStatus("complete");
     } catch (err) {
       const message =
