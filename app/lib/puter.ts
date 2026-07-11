@@ -25,6 +25,7 @@ interface PuterFS {
 interface PuterAI {
   chat: (
     prompt: string,
+    imageOrOptions?: string | Record<string, unknown>,
     options?: Record<string, unknown>,
   ) => Promise<{ message: { content: string } } | string>;
   img2txt: (
@@ -76,8 +77,8 @@ interface PuterStore {
   };
   ai: {
     feedback: (
-      prompt: string,
-      options?: Record<string, unknown>,
+      imagePath: string,
+      instructions: string,
     ) => Promise<string>;
     chat: (
       prompt: string,
@@ -171,9 +172,11 @@ export const usePuterStore = create<PuterStore>((set, get) => ({
 
   // -- AI slice -------------------------------------------------------------
   ai: {
-    feedback: async (prompt, options) => {
+    feedback: async (imagePath, instructions) => {
       const puter = getPuter();
-      const response = await puter.ai.chat(prompt, options);
+      const response = await puter.ai.chat(instructions, imagePath, {
+        model: "gpt-5.4-nano",
+      });
       return typeof response === "string"
         ? response
         : response.message.content;

@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import FileUploader from "../components/FileUploader";
 import { usePuterStore } from "~/lib/puter";
 import { convertPdfToImage } from "~/lib/pdf2img";
+import { prepareInstructions } from "~/constants";
 
 export function meta(_: Route.MetaArgs) {
   return [
@@ -35,7 +36,7 @@ const STATUS_TEXT: Record<UploadStatus, string> = {
 
 export default function Upload() {
   const navigate = useNavigate();
-  const { auth, isLoading, init, fs } = usePuterStore();
+  const { auth, isLoading, init, fs, ai, kv } = usePuterStore();
 
   // Form state
   const [companyName, setCompanyName] = useState("");
@@ -61,6 +62,16 @@ export default function Upload() {
 
   const isProcessing = status !== "idle" && status !== "error";
 
+  /** Convert a File to a base64 data URL for inline AI consumption. */
+  function fileToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -83,13 +94,58 @@ export default function Upload() {
         return;
       }
 
-      // Step 3: Upload the converted image
+      // Step 3: Upload the converted image (for later display on results page)
       setStatus("uploading");
       const imageResult = await fs.upload(imageFile);
       console.log("Image upload result:", imageResult);
 
-      // Step 4: AI analysis (next phase — placeholder for now)
+      // Step 4: Convert image to base64 data URL for the AI call
+      const imageDataUrl = await fileToDataUrl(imageFile);
+      console.log("Image data URL preview:", imageDataUrl.substring(0, 50));
+
+      // Step 5: AI analysis
+      setStatus("analyzing");
+      const instructions = prepareInstructions({ jobTitle, jobDescription });
+
+      const imageUrl = (imageResult as any).path || "image.png";
+      const pdfUrl = (pdfResult as any).url || "resume.pdf";
+
+      const aiResponse = await ai.feedback(imageDataUrl, instructions);
+
+      console.log("Raw AI response:", aiResponse);
+
+      let parsedFeedback: any;
+      try {
+        let jsonStr = aiResponse;
+        jsonStr = jsonStr.trim();
+        if (jsonStr.startsWith("```json")) {
+          jsonStr = jsonStr.replace(/^```json\n?/, "").replace(/```$/, "");
+        } else if (jsonStr.startsWith("```")) {
+          jsonStr = jsonStr.replace(/^```\n?/, "").replace(/```$/, "");
+        }
+        parsedFeedback = JSON.parse(jsonStr.trim());
+      } catch (e) {
+        console.error("Failed to parse AI response:", aiResponse);
+        throw new Error("Failed to parse AI analysis. Please try again.");
+      }
+
+      console.log("Parsed feedback:", parsedFeedback);
+
+      // Step 5: Store in KV
+      const resumeId = crypto.randomUUID();
+      const resume = {
+        id: resumeId,
+        companyName,
+        jobTitle,
+        imagePath: imageUrl,
+        resumePath: pdfUrl,
+        feedback: parsedFeedback,
+      };
+
+      await kv.set(`resume:${resumeId}`, JSON.stringify(resume));
+
       setStatus("complete");
+      navigate(`/resume/${resumeId}`);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Upload failed.";
