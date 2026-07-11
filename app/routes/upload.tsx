@@ -72,6 +72,50 @@ export default function Upload() {
     });
   }
 
+  /**
+   * Detect Puter storage / balance / quota errors.
+   * Puter may surface these as 402 or 507 status codes, or include
+   * keywords like "balance", "storage", "quota", or "space" in the
+   * error message or nested response body.
+   */
+  function isStorageError(err: unknown): boolean {
+    const keywords = /balance|storage|quota|space|insufficient|limit/i;
+
+    if (err instanceof Error) {
+      if (keywords.test(err.message)) return true;
+    }
+
+    // Puter SDK errors sometimes carry a status or code property
+    if (typeof err === "object" && err !== null) {
+      const obj = err as Record<string, unknown>;
+      const status = obj.status ?? obj.code ?? obj.statusCode;
+      if (status === 402 || status === 507) return true;
+
+      // Check nested response / body / message fields
+      const body = obj.response ?? obj.body ?? obj.detail ?? "";
+      if (typeof body === "string" && keywords.test(body)) return true;
+    }
+
+    // Fallback: stringify and scan (catches deeply-nested messages)
+    try {
+      if (keywords.test(String(err))) return true;
+    } catch {
+      // Ignore stringify failures
+    }
+
+    return false;
+  }
+
+  const STORAGE_ERROR_MSG =
+    "Your Puter storage is full. Please free up space in your Puter " +
+    "account (puter.com) or upgrade your plan, then try again.";
+
+  /** Reset the form back to a retryable state. */
+  const handleRetry = () => {
+    setStatus("idle");
+    setErrorMessage(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -147,8 +191,14 @@ export default function Upload() {
       setStatus("complete");
       navigate(`/resume/${resumeId}`);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Upload failed.";
+      console.error("Upload pipeline error:", err);
+
+      const message = isStorageError(err)
+        ? STORAGE_ERROR_MSG
+        : err instanceof Error
+          ? err.message
+          : "Upload failed.";
+
       setErrorMessage(message);
       setStatus("error");
     }
@@ -233,13 +283,22 @@ export default function Upload() {
             </div>
 
             {status === "error" && errorMessage && (
-              <div className="flex items-center gap-2 text-red-600 text-sm">
-                <img
-                  src="/icons/warning.svg"
-                  alt="Error"
-                  className="w-4 h-4"
-                />
-                <p>{errorMessage}</p>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start gap-2 text-red-600 text-sm p-3 bg-red-50 border border-red-200 rounded-xl">
+                  <img
+                    src="/icons/warning.svg"
+                    alt="Error"
+                    className="w-4 h-4 mt-0.5 shrink-0"
+                  />
+                  <p>{errorMessage}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  className="text-sm text-dark-200 hover:text-gray-800 underline underline-offset-2 cursor-pointer self-center transition-colors duration-200"
+                >
+                  ← Try Again
+                </button>
               </div>
             )}
 

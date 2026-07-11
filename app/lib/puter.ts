@@ -20,6 +20,7 @@ interface PuterAuth {
 interface PuterFS {
   upload: (file: File, options?: Record<string, unknown>) => Promise<unknown>;
   read: (path: string) => Promise<Blob>;
+  delete: (path: string) => Promise<void>;
 }
 
 interface PuterAI {
@@ -74,6 +75,7 @@ interface PuterStore {
   fs: {
     upload: (file: File, options?: Record<string, unknown>) => Promise<unknown>;
     read: (path: string) => Promise<Blob>;
+    delete: (path: string) => Promise<void>;
   };
   ai: {
     feedback: (
@@ -167,6 +169,10 @@ export const usePuterStore = create<PuterStore>((set, get) => ({
     read: async (path) => {
       const puter = getPuter();
       return puter.fs.read(path);
+    },
+    delete: async (path) => {
+      const puter = getPuter();
+      return puter.fs.delete(path);
     },
   },
 
