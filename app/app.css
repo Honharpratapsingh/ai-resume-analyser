@@ -127,6 +127,50 @@ form {
   .uploader-selected-file {
     @apply flex items-center justify-between p-3 bg-gray-50 rounded-2xl;
   }
+
+  .resume-results-section {
+    @apply flex flex-row gap-8 max-w-[1400px] mx-auto px-6 pt-12 pb-16 max-lg:flex-col max-lg:items-center;
+  }
+
+  .resume-preview-col {
+    @apply flex flex-col gap-5 w-[380px] max-lg:w-full max-lg:max-w-xl lg:sticky lg:top-8 lg:self-start shrink-0;
+  }
+
+  .resume-image-card {
+    @apply bg-white rounded-2xl p-3 shadow-md border border-gray-100 overflow-hidden;
+  }
+
+  .overall-score-card {
+    @apply flex items-center gap-6 bg-white rounded-2xl p-6 shadow-sm border border-gray-100;
+  }
+
+  .overall-score-ring {
+    @apply flex flex-col items-center justify-center w-20 h-20 rounded-full border-4 shrink-0;
+  }
+
+  .overall-score-number {
+    @apply text-2xl font-bold leading-none;
+  }
+
+  .category-detail-card {
+    @apply bg-white rounded-2xl p-6 shadow-sm border border-gray-100;
+  }
+
+  .tip-row {
+    @apply flex items-start gap-3 p-3 bg-gray-50 rounded-xl;
+  }
+
+  .tip-icon {
+    @apply w-5 h-5 shrink-0 mt-0.5;
+  }
+
+  .tip-icon-good {
+    @apply opacity-80;
+  }
+
+  .tip-icon-improve {
+    @apply opacity-80;
+  }
 }
 
 @utility bg-gradient {
